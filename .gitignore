@@ -49,6 +49,6 @@ po/*~
 rsconnect/
 
 # data folders
-/1-Input data/VME repository data/
-/1-Input data/VMS repository data/
+/1-Input data/VME data repository/
+/1-Input data/VMS data repository/
 /1-Input data/eco_bathymetry_v2/
