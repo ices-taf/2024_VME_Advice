@@ -34,7 +34,7 @@ PubYearPrevAdvice <- 2023
 
 # Set main work/path directory  
 #pathdir <- getwd()
-pathdir <- "D:/VME/VME2024"
+pathdir <- "D:/2024_VME_Advice/"
 
 # Set path to geopackage for all related GIS data products
 geopack <- paste(pathdir,"EUVME_Assessment_2022.gpkg",sep="/")
