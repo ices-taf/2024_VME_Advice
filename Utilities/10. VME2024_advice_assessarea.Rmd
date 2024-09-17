@@ -1,0 +1,474 @@
+---
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r region subset,include=FALSE}
+
+# set the region of interest
+  s_reg         <- subset(shape_ices_EEZ,shape_ices_EEZ$Eco_EEZ %in% Region_ID)
+  s_scen11_prev <- st_make_valid(st_intersection(st_make_valid(scen11_prev_dpt),s_reg))
+  s_scen12_prev <- st_make_valid(st_intersection(st_make_valid(scen12_prev_dpt),s_reg))
+  s_scen21_prev <- st_make_valid(st_intersection(st_make_valid(scen21_prev_dpt),s_reg))
+  s_scen22_prev <- st_make_valid(st_intersection(st_make_valid(scen22_prev_dpt),s_reg))
+  s_scen23_prev <- st_make_valid(st_intersection(st_make_valid(scen23_prev_dpt),s_reg))
+  # s_scen11      <- st_make_valid(st_intersection(st_make_valid(scen11),s_reg))
+  # s_scen11      <- s_scen11[which(lengths(st_intersects(s_scen11, Reg_depth)) > 0),] 
+  # s_scen12      <- st_make_valid(st_intersection(st_make_valid(scen12),s_reg))
+  # s_scen12      <- s_scen12[which(lengths(st_intersects(s_scen12, Reg_depth)) > 0),] 
+  # s_scen21      <- st_make_valid(st_intersection(st_make_valid(scen21),s_reg))
+  # s_scen21      <- s_scen21[which(lengths(st_intersects(s_scen21, Reg_depth)) > 0),] 
+  # s_scen22      <- st_make_valid(st_intersection(st_make_valid(scen22),s_reg))
+  # s_scen22      <- s_scen22[which(lengths(st_intersects(s_scen22, Reg_depth)) > 0),] 
+  # s_scen23      <- st_make_valid(st_intersection(st_make_valid(scen23),s_reg))
+  # s_scen23      <- s_scen23[which(lengths(st_intersects(s_scen23, Reg_depth)) > 0),] 
+  # s_scen23      <- st_collection_extract(s_scen23,type = c("POLYGON")) # issue with polyline in leaflet
+  s_scen11_dpt      <- st_make_valid(st_intersection(st_make_valid(scen11_dpt),s_reg))
+  s_scen12_dpt      <- st_make_valid(st_intersection(st_make_valid(scen12_dpt),s_reg))
+  s_scen21_dpt      <- st_make_valid(st_intersection(st_make_valid(scen21_dpt),s_reg))
+  s_scen22_dpt      <- st_make_valid(st_intersection(st_make_valid(scen22_dpt),s_reg))
+  s_scen23_dpt      <- st_make_valid(st_intersection(st_make_valid(scen23_dpt),s_reg))
+  s_EUFootp     <- st_make_valid(st_intersection(st_make_valid(EUFootp),s_reg))
+  s_New_comb    <- st_make_valid(st_intersection(New_comb,s_reg))
+  s_New_comb    <- st_collection_extract(s_New_comb,type = c("POLYGON")) # issue with polyline in leaflet
+  s_New_mobile  <- st_make_valid(st_intersection(New_mobile,s_reg))
+  s_New_mobile  <- st_collection_extract(s_New_mobile,type = c("POLYGON")) # issue with polyline in leaflet
+  s_New_static  <- st_make_valid(st_intersection(New_static,s_reg))
+  s_New_static  <- st_collection_extract(s_New_static,type = c("POLYGON")) # issue with polyline in leaflet
+  s_New_SAR     <- st_make_valid(st_intersection(New_SAR,s_reg))
+  s_New_SAR     <- st_collection_extract(s_New_SAR,type = c("POLYGON")) # issue with polyline in leaflet
+  s_clos_eu     <- st_make_valid(st_intersection(st_make_valid(clos_eu),s_reg))
+  s_clos_eu_d   <- st_make_valid(st_intersection(s_clos_eu,Reg_depth))
+  s_VMEgrid_new <- st_make_valid(st_intersection(VMEgrid_new,Reg_depth))
+  s_VMEgrid_new <- st_collection_extract(VMEgrid_new,type = c("POLYGON")) # issue with polyline in leaflet
+  #s_VMEgrid_new_f <- st_intersection(VMEgrid_new_filtered,Reg_depth)
+  #s_VMEgrid_new_f <- st_collection_extract(s_VMEgrid_new_f,type = c("POLYGON")) # issue with polyline in leaflet
+  s_VMEgrid_old <- st_make_valid(st_intersection(VMEgrid_old,Reg_depth))
+  s_VMEgrid_old <- st_collection_extract(VMEgrid_old,type = c("POLYGON")) # issue with polyline in leaflet
+  s_Elements    <- st_make_valid(st_intersection(st_make_valid(Elements),s_reg))
+  s_Elements    <- s_Elements %>% mutate(type = factor(type, levels = c('Bank','Coral mound','Seamount'))) # set Element type as factor
+  s_Elements    <- s_Elements %>% filter(!st_is_empty(.))
+  s_Reg_depth   <- st_cast(st_make_valid(st_intersection(Reg_depth,st_union(s_reg)))) # creates linestrings
+  s_Reg_depth   <- st_collection_extract(s_Reg_depth,type = c("POLYGON")) # issue with polyline in leaflet
+  s_vmedb_sf <- st_make_valid(st_intersection(st_make_valid(vmedb_sf),st_make_valid(s_Reg_depth)))
+  
+```
+
+### Map of VME polygons
+```{r , results = 'asis'}
+tt <- subset(textreg,textreg$Tab == "Map of updated VME polygons" & textreg$Ecoregion %in% c(Region_ID_Excel,"Both"))
+if(!(is.na(tt$Text))){
+for(i in 1:nrow(tt)){
+  cat(tt[i,3])
+  }}
+```
+<br>
+```{r Build option map2, include=FALSE}
+
+# select all changed VME Index c-squares, including the 'removed' ones
+  s_changedVMEindex1 <- subset(s_VMEgrid_new, Change %in% c("New", "Up", "Down"))
+  removedCsq <- subset(s_VMEgrid_old, csquares %in% subset(s_VMEgrid_new, Change=="Removed")$csquares)$geom
+  s_changedVMEindex2 <- subset(s_VMEgrid_new, Change == "Removed")
+  s_changedVMEindex2$geometry <- removedCsq
+  s_changedVMEindex <- rbind(s_changedVMEindex1, s_changedVMEindex2)
+  rm(s_changedVMEindex1, s_changedVMEindex2)
+  s_changedVMEindex$Old_VME_class_Lab = ifelse(s_changedVMEindex$VME_Class_Old == 0, "Low VME Index",
+                                               ifelse(s_changedVMEindex$VME_Class_Old == 1, "Med VME Index",
+                                                      ifelse(s_changedVMEindex$VME_Class_Old == 2, "High VME Index",
+                                                             ifelse(s_changedVMEindex$VME_Class_Old == 3, "VME Habitat", 
+                                                                    "Not included"))))
+  s_changedVMEindex$popTbl <- paste0("<table class='gmisc_table' style='border-collapse: collapse; margin-top: 1em; margin-bottom: 1em;' >\n<tbody>\n<tr style='border-top: 2px solid grey;'>\n<td style='width: 400; font-weight: bold; border-top: 2px solid grey; text-align: left;'>Deviating VME Index</td>\n<td style='width: 150; font-weight: bold; border-top: 2px solid grey; text-align: right;'></td>\n</tr>\n<tr>\n<td style='width: 400; font-weight: bold; text-align: left;'>C-Square: </td>\n<td style='width: 150; font-weight: bold; text-align: right;'>", s_changedVMEindex$csquares, "</td>\n</tr>\n<tr>\n<td style='width: 400; font-weight: bold; text-align: left;'>VME Index (ICES, ", PubYearPrevAdvice, "): </td>\n<td style='width: 150; font-weight: bold; text-align: right;'>", s_changedVMEindex$Old_VME_class_Lab, "</td>\n</tr>\n<tr>\n<td style='width: 400; font-weight: bold; border-bottom: 2px solid grey; text-align: left;'>new VME Index (", datacallyear, "): </td>\n<td style='width: 150; font-weight: bold; border-bottom: 2px solid grey; text-align: right;'>", s_changedVMEindex$VME_Class_Lab, "</td>\n</tr>\n</tbody>\n</table>")
+  
+  s_VMEgrid_new <- subset(s_VMEgrid_new, is.na(s_VMEgrid_new$VME_Class_Lab) == F)
+  
+# Create colour palette for VMEs
+  VMEcolours <- c("#2E8AC6","#F40000","#F67E11","#FDF100")
+  VMEpal <- colorFactor(palette=VMEcolours, 
+                        levels=c("VME Habitat", "High VME Index", "Med VME Index", "Low VME Index"))
+  VMEcolours2 <- c("#66C2A5", "#FC8D62", "#8DA0CB", "#E78AC3")
+  VMEpal2 <- colorFactor(palette=VMEcolours2, 
+                         levels=c("New", "Up", "Down", "Removed"))
+  
+  Elementcolours <- c("#BCE784", "#348AA7", "#513B56")
+  Elementpal <- colorFactor(Elementcolours, levels=c("Bank", "Coral mound", "Seamount"))
+  SARbins <- c(0, 0.43, 1, 3, Inf)
+  SARpal <- colorBin("YlOrRd", domain = s_New_SAR$AVSAR, bins = SARbins)
+# set region
+  mxt <- st_bbox(s_reg)
+
+# names for the leaflet # 18 layers
+nam <- c("EU assessment area","Depth zone 400-800m","EU-established VME areas",
+         paste0("VME Index - ", datacallyear), 
+         "Deviating VME Index scores",
+         paste0("VME polygons sc. A (ICES, ", PubYearPrevAdvice, ")"), 
+         paste0("VME polygons sc. B (ICES, ", PubYearPrevAdvice, ")"),
+         paste0("VME polygons sc. C (ICES, ", PubYearPrevAdvice, ")"), 
+         paste0("VME polygons sc. D (ICES, ", PubYearPrevAdvice, ")"), 
+         paste0("VME polygons sc. E (ICES, ", PubYearPrevAdvice, ")"), 
+         paste0("VME polygons sc. A (", datacallyear, " advice)"),
+         paste0("VME polygons sc. B (", datacallyear, " advice)"), 
+         paste0("VME polygons sc. C (", datacallyear, " advice)"),
+         paste0("VME polygons sc. D (", datacallyear, " advice)"),
+         paste0("VME polygons sc. E (", datacallyear, " advice)"),
+         "EU fishable domain", paste0("MBCG intensity (2009-", datacallyear_VMS-1, ")"),
+         "VME physical elements") #"MBCG activity" (former nr 17) 
+
+# Colourpalette for options
+optpalOld <- c('#ffe599','#ffc4c4','#9fc5e8','#eeeeee','#b4a7d6')
+optpalNew <- c('#C4A958','#906262','#537391','#8E8C8C','#4E3F75')
+optpalZone <- c('#7F7148','#674444','#405971','#545353','#2C204A')
+
+mfs2 <- leaflet() %>%
+    fitBounds(mxt[[1]],mxt[[2]],mxt[[3]],mxt[[4]]) %>%
+    addProviderTiles(providers$Esri.WorldImagery) %>%
+    addMapPane("scens", zIndex = 420) %>%
+    
+  # boundaries
+    addPolygons(data = s_reg, group = nam[1],
+                stroke = TRUE, fillOpacity = 0.1, smoothFactor = 0.5, opacity = 0.5, weight = 1, color = "white") %>%
+    addPolygons(data = s_Reg_depth, group = nam[2],
+                stroke = TRUE, fillOpacity = 0.1, smoothFactor = 0.5, opacity = 0.5, weight = 1, color = "yellow") %>%
+     
+  # Closures
+     addPolygons(data = s_clos_eu, group = nam[3],
+                 stroke = FALSE, fillOpacity = 0.5, smoothFactor = 0.5, fillColor =  "black") %>% 
+
+  # VME Index c-sqs
+     addPolygons(data = s_VMEgrid_new, group = nam[4],
+                 stroke = FALSE, fillOpacity = 1, smoothFactor = 0.5,
+                 fillColor = ~VMEpal(s_VMEgrid_new$VME_Class_Lab),
+                 #layerId = s_VMEgrid_new$csquares,
+                 popup = s_VMEgrid_new$popTbl,
+                 color = "transparent",
+                 highlightOptions = highlightOptions(stroke='white',
+                                                     color = "white",
+                                                     fillOpacity = 1,
+                                                     weight = 2,)) %>%
+     
+       addPolygons(data =  s_changedVMEindex, group = nam[5],
+                 stroke = FALSE, fillOpacity = 0.5,
+                 #layerId =  s_changedVMEindex$csquares,
+                 fillColor =  ~VMEpal2(Change),
+                 popup =  s_changedVMEindex$popTbl,
+                 color = "transparent",
+                 highlightOptions = highlightOptions(stroke='white',
+                                                     color = "white",
+                                                     fillOpacity = 1,
+                                                     weight = 2,)) %>% 
+    
+    # old polygons - within
+    addPolygons(data = s_scen11_prev, 
+                group=nam[6],
+                stroke = TRUE, 
+                fillOpacity = 0.4, 
+                smoothFactor = 0.5, 
+                opacity = 0.5, 
+                weight = 2, 
+                color = optpalOld[1],
+                highlightOptions = highlightOptions(stroke='white',
+                                    color = "white",
+                                    fillOpacity = 1,
+                                    weight = 2,),
+                popup = s_scen11_prev$popTbl) %>%
+    addPolygons(data = s_scen12_prev, 
+                group=nam[7],
+                stroke = TRUE, 
+                fillOpacity = 0.4, 
+                smoothFactor = 0.5, 
+                opacity = 0.5, 
+                weight = 2, 
+                color = optpalOld[2],
+                highlightOptions = highlightOptions(stroke='white',
+                                    color = "white",
+                                    fillOpacity = 1,
+                                    weight = 2,),
+                popup = s_scen12_prev$popTbl) %>%
+    addPolygons(data = s_scen21_prev, 
+                group=nam[8],
+                stroke = TRUE, 
+                fillOpacity = 0.4, 
+                smoothFactor = 0.5, 
+                opacity = 0.5, 
+                weight = 2, 
+                color = optpalOld[3],
+                highlightOptions = highlightOptions(stroke='white',
+                                    color = "white",
+                                    fillOpacity = 1,
+                                    weight = 2,),
+                popup = s_scen21_prev$popTbl) %>%
+    addPolygons(data = s_scen22_prev, 
+                group=nam[9],
+                stroke = TRUE, 
+                fillOpacity = 0.4, 
+                smoothFactor = 0.5, 
+                opacity = 0.5, 
+                weight = 2, 
+                color = optpalOld[4],
+                highlightOptions = highlightOptions(stroke='white',
+                                    color = "white",
+                                    fillOpacity = 1,
+                                    weight = 2,),
+                popup = s_scen22_prev$popTbl) %>%
+    addPolygons(data = s_scen23_prev, 
+                group=nam[10],
+                stroke = TRUE, 
+                fillOpacity = 0.4, 
+                smoothFactor = 0.5, 
+                opacity = 0.5, 
+                weight = 2, 
+                color = optpalOld[5],
+                highlightOptions = highlightOptions(stroke='white',
+                                      color = "white",
+                                      fillOpacity = 1,
+                                      weight = 2,),
+                popup = s_scen23_prev$popTbl) %>%
+  
+  # New polygons 
+    addPolygons(data = s_scen11_dpt,
+                group = nam[11],
+                layerId = s_scen11_dpt$id,
+                stroke = FALSE, 
+                fillOpacity = 0.6,
+                fillColor =  optpalZone[1],
+                color = "transparent",
+                highlightOptions = highlightOptions(stroke='white',
+                                                    color = "white",
+                                                    fillOpacity = 1,
+                                                    weight = 2,),
+                popup = s_scen11_dpt$popTbl,
+                options = pathOptions(pane = "scens")) %>%
+    
+  addPolygons(data = s_scen12_dpt, 
+                group=nam[12],
+                layerId = s_scen12_dpt$id,
+                stroke = FALSE, 
+                fillOpacity = 0.6,
+                fillColor =  optpalZone[2],
+                color = "transparent",
+                highlightOptions = highlightOptions(stroke='white',
+                                                    color = "white",
+                                                    fillOpacity = 1,
+                                                    weight = 2,),
+                popup = s_scen12_dpt$popTbl,
+                options = pathOptions(pane = "scens")) %>%
+    
+  addPolygons(data = s_scen21_dpt, 
+                group=nam[13],
+                layerId = s_scen21_dpt$id,
+                stroke = FALSE, 
+                fillOpacity = 0.6,
+                fillColor =  optpalZone[3],
+                color = "transparent",
+                highlightOptions = highlightOptions(stroke='white',
+                                                    color = "white",
+                                                    fillOpacity = 1,
+                                                    weight = 2,),
+                popup = s_scen21_dpt$popTbl,
+                options = pathOptions(pane = "scens")) %>%
+    
+  addPolygons(data = s_scen22_dpt, 
+                group=nam[14],
+                layerId = s_scen22_dpt$id,
+                stroke = FALSE, 
+                fillOpacity = 0.6,
+                fillColor =  optpalZone[4],
+                color = "transparent",
+                highlightOptions = highlightOptions(stroke='white',
+                                                    color = "white",
+                                                    fillOpacity = 1,
+                                                    weight = 2,),
+                popup = s_scen22_dpt$popTbl,
+                options = pathOptions(pane = "scens")) %>%
+
+     addPolygons(data = s_scen23_dpt,
+                 group=nam[15],
+                 layerId = s_scen23_dpt$id,
+                 stroke = FALSE,
+                 fillOpacity = 0.6,
+                 fillColor =  optpalZone[5],
+                 color = "transparent",
+                 highlightOptions = highlightOptions(stroke='white',
+                                                     color = "white",
+                                                     fillOpacity = 1,
+                                                     weight = 2,),
+                 popup = s_scen23_dpt$popTbl,
+                 options = pathOptions(pane = "scens")) %>%
+  
+    # EU footprint and fishing areas
+     addPolygons(data = s_EUFootp, group = nam[16],
+                 stroke = FALSE, fillOpacity = 0.5, smoothFactor = 0.5, fillColor =  "white") %>%
+    
+    # # Add mobile activity
+    #  addPolygons(data = s_New_mobile, group = nam[17],
+    #              stroke = FALSE, fillOpacity = 0.5, smoothFactor = 0.5, fillColor =  "orange") %>%
+    # Add SAR
+      addPolygons(data = s_New_SAR, group = nam[17],
+                 stroke = FALSE, fillOpacity = 0.5, 
+                 smoothFactor = 0.5, fillColor =  ~SARpal(AVSAR)) %>%
+    # elements
+     addPolygons(data = s_Elements, group = nam[18],
+                 stroke = FALSE, fillColor =  ~Elementpal(type),
+                 fillOpacity = 0.5, smoothFactor = 0.5) %>%
+   
+    addLegend(group = c(nam[4], nam[5]),title="VME Index",
+               position = "bottomleft",
+               colors = VMEcolours, labels= c("VME Habitat", "High VME Index", "Medium VME Index", "Low VME Index")) %>%
+    # addLegend(group = nam[5],
+    #            position = "bottomleft", title=nam[5],
+    #            colors = VMEcolours, labels= c("VME Habitat", "High VME Index", "Medium VME Index", "Low VME Index")) %>%
+    # addLegend(group = nam[19],
+    #            position = "bottomleft",
+    #            colors = VMEcolours2, labels= levels(s_VMEgrid_new_f$VME_Class_Lab)) %>%
+    addLegend(group = nam[18],
+               position = "bottomleft", title=nam[18],
+               colors = Elementcolours, labels= c("Bank", "Coral mound", "Seamount")) %>%
+    addLegend(group = nam[17],
+               position = "bottomleft", title=nam[17],
+               pal = SARpal, values = s_New_SAR) %>%
+    
+   # Layers control
+   addLayersControl(
+     overlayGroups = nam[c(1:2,11:15, 3:5, 16:18, 6:10)],
+     position = "topright")%>% # 
+
+  # hide
+  hideGroup(nam[c(3:12, 14:18)])
+```
+
+```{r echo=FALSE, message=FALSE,fig.asp=0.8,out.width='85%', fig.cap=""}
+
+mfs2
+
+```
+
+
+### Overlap VME and MBCG fishing c-squares 
+```{r , results = 'asis'}
+tt <- subset(textreg,textreg$Tab == "Overlap VME and MBCG fishing c-squares" & textreg$Ecoregion %in% c(Region_ID_Excel,"Both"))
+if(!(is.na(tt$Text))){
+for(i in 1:nrow(tt)){
+  cat(tt[i,3])
+  }}
+```
+<br>
+```{r, echo=FALSE, message=FALSE, out.width='80%',fig.align = 'center', fig.cap="** **"}
+
+  # Subset data to region
+  reg  <- subset(table1,table1$Ecoregion %in% Region_ID & table1$EUassess == 1)  
+  
+  #sum(table(reg$cat)) # get total assessed area - add to the table text
+  source(paste(pathdir,"Utilities/7. Compile_table1.R",sep="/"))
+
+  # match NA's and zeros
+  tab1[c(1,5,9,13),][is.na(tab1[c(1,5,9,13),])] <- ""
+  tab1[,c(6,11)][is.na(tab1[,c(6,11)])] <- ""
+  tab1[is.na(tab1)] <- "0"
+  
+  clnms <- data.frame(hdr= c(" ", 
+                             paste0(PubYearPrevAdvice, " Assessment"), 
+                             " ", 
+                             paste0(datacallyear, " Assessment"),
+                             " ",
+                             paste0("New/updated in ", datacallyear)),
+                      clspn = c(1,2,1,2,1,2))
+  
+  tab1 %>% select(-c(4,5,9,10)) %>% 
+    filter(!if_any(1, ~. %in% c("200-400m", ">800m"))) %>% 
+    kable('html',escape = FALSE, align=c('l',rep('c',7)),row.names = FALSE,
+          col.names = c(" ", "Total number",
+                        "Nr. with MBCG fishing", 
+                        " ", "Total number",
+                        "Nr. with MBCG fishing",
+                        " ", "Total number",
+                        "Nr. with MBCG fishing")) %>%
+    kable_classic(full_width = F, position = "center",fixed_thead = T,font_size = 10,html_font = "Times") %>%
+    row_spec(0, bold = T, extra_css = 'padding: 3.5px;vertical-align:top;')  %>%
+    row_spec(c(1,3,5,7),bold = T, background = icespal[['lg']], extra_css = 'padding: 3px;vertical-align:top;') %>%
+    row_spec(c(2,4,6,8:10), extra_css = 'padding: 1.5px;vertical-align:top;') %>%
+    column_spec(1, width = "6cm") %>%
+    column_spec(3:9, width = "5cm") %>%
+    #column_spec(c(2,5,8,9), width = "5cm") %>%
+    column_spec(c(4,7), width = ".8cm") %>%
+    add_header_above(clnms,bold = TRUE, line_sep = 10, extra_css = 'padding: 3px;vertical-align:top;') %>%
+    kable_styling(bootstrap_options = c("hover"))
+  #%>%
+   # add_header_above(c(" " = 1,"Number of c-squares" = 7),bold = TRUE, extra_css = 'padding:   3px;vertical-align:top;')
+
+```
+
+### Scenario outcomes
+```{r , results = 'asis'}
+tt <- subset(textreg,textreg$Tab == "Scenario outcomes" & textreg$Ecoregion %in% c(Region_ID_Excel,"Both"))
+if(!(is.na(tt$Text))){
+for(i in 1:nrow(tt)){
+  cat(tt[i,3])
+  }}
+```
+
+```{r echo=FALSE, message=FALSE, out.width='70%',fig.align = 'center', fig.cap=""}
+
+  source(paste(pathdir,"Utilities/8. Compile_table2.R",sep="/")) # warnings okay
+  tab2[is.na(tab2)] <- "" 
+  
+  colnames(tab2) <- c("","Scenario A","Scenario B","Scenario C","Scenario D","Scenario E")
+  
+  tab2[4,1] <- "Percentage of existing deep-sea fishing areas identified as VME polygon"
+  tab2[5,1] <- "Percentage of VME polygons in prohibited fishing areas"
+  tab2[6,1] <- "Number of VME polygons and their average areal extent"
+  tab2[7,1] <- "Number of large VME polygons and their average areal extent*"
+  tab2[8,1] <- "Total polygon area under each scenario"
+  
+  tab2[-c(1:3,9:14),]  %>%
+    kable('html',escape = FALSE, align='l',row.names = FALSE) %>%
+    kable_classic(full_width = F, position = "center",fixed_thead = T,font_size = 10,html_font = "Times") %>%
+    row_spec(0, bold = T, extra_css = 'padding: 3.5px;vertical-align:top;', background = icespal[['lg']])  %>%
+    row_spec(c(2:5), extra_css = 'padding: 5px;vertical-align:top;') %>%
+    column_spec(1, width = "10cm",extra_css = 'padding-right: 10px;vertical-align:top;') %>%
+    column_spec(2:ncol(tab2), width = "4.5cm") %>%
+    footnote(symbol = c("This value is calculated based on ranking the areas of individual polygons from large to small and selecting the largest polygons that together constitute 25% of the total area within all polygons"))%>%
+    kable_styling(bootstrap_options = c("hover"))
+
+```
+
+### VME Habitat and Indicators
+```{r , results = 'asis'}
+tt <- subset(textreg,textreg$Tab == "VME Habitat and Indicator consequences" & textreg$Ecoregion %in% c(Region_ID_Excel,"Both"))
+if(!(is.na(tt$Text))){
+for(i in 1:nrow(tt)){
+  cat(tt[i,3])
+  }}
+```
+
+```{r, biological table}
+
+source(paste(pathdir,"Utilities/9. Compile_table3.R",sep="/"))
+
+colnames(tab4) <- c("", "Total number of records", "% in prohibited fishing areas",       
+                    paste0("% in Scen. A - ", datacallyear), 
+                    paste0("% in Scen. B - ", datacallyear),
+                    paste0("% in Scen. C - ", datacallyear), 
+                    paste0("% in Scen. D - ", datacallyear), 
+                    paste0("% in Scen. E - ", datacallyear), 
+                    paste0("% in Scen. A (ICES, ", PubYearPrevAdvice, ")"),
+                    paste0("% in Scen. B (ICES, ", PubYearPrevAdvice, ")"), 
+                    paste0("% in Scen. C (ICES, ", PubYearPrevAdvice, ")"),
+                    paste0("% in Scen. D (ICES, ", PubYearPrevAdvice, ")"), 
+                    paste0("% in Scen. E (ICES, ", PubYearPrevAdvice, ")"))
+tab4[is.na(tab4)] <- "0" 
+
+require(kableExtra)
+tab4  %>%
+  kable('html',escape = FALSE, align='l',row.names = FALSE) %>%
+  kable_classic(full_width = F, position = "center",
+                fixed_thead = T,font_size = 10,
+                html_font = "Times") %>%
+  row_spec(0, bold = T, 
+           extra_css = 'padding: 3.5px;vertical-align:top;')  %>%
+  row_spec(c(1,nhab+2),bold = T, background = icespal[['lg']], extra_css = 'padding: 5px;vertical-align:top;') %>%
+  column_spec(1, width = "5cm",extra_css = 'padding-right: 10px;vertical-align:top;')%>%
+    kable_styling(bootstrap_options = c("hover"))
+
+```
+
+
