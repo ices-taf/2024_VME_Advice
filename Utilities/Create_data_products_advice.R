@@ -8,7 +8,7 @@ PubYearPrevAdvice <- 2023
 
 # Set main work/path directory  
 #pathdir <- getwd()
-pathdir <- "D:/VME/ADGVME2Assessment_AD_30032023"
+pathdir <- "D:/2024_VME_Advice"
 
 # Set path to geopackage for all related GIS data products
 geopack <- paste(pathdir,"EUVME_Assessment_2022.gpkg",sep="/")
@@ -211,6 +211,8 @@ for(iPoly in 1:nrow(scenario_A)){
   scA = rbind(scA, sub)
   }} # end
 st_write(obj=scA, paste0(pathdir, "/data_products/Shapefile_scA.shp"))
+sum(st_area(scenario_A)) == sum(st_area(scA)) # check for same size
+st_geometry(st_union(scenario_A)) == st_geometry(st_union(scA)) # check for same locations
 
 scB = scenario_B[0,]
 for(iPoly in 1:nrow(scenario_B)){
@@ -223,18 +225,22 @@ for(iPoly in 1:nrow(scenario_B)){
     scB = rbind(scB, sub)
   }} # end
 st_write(obj=scB, paste0(pathdir, "/data_products/Shapefile_scB.shp"))
+sum(st_area(scenario_B)) == sum(st_area(scB)) # check for same size
+st_geometry(st_union(scenario_B)) == st_geometry(st_union(scB)) # check for same locations
 
 scC = scenario_C[0,]
 for(iPoly in 1:nrow(scenario_C)){
   sub = scenario_C[iPoly,]
   sub = st_cast(sub, "POLYGON")
   if(nrow(sub) == 1){
-    scC = rbind(scB, sub)
+    scC = rbind(scC, sub)
   } else {
     sub$id = paste0(iPoly, letters[1:nrow(sub)])
     scC = rbind(scC, sub)
   }} # end
 st_write(obj=scC, paste0(pathdir, "/data_products/Shapefile_scC.shp"))
+sum(st_area(scenario_C)) == sum(st_area(scC)) # check for same size
+st_geometry(st_union(scenario_C)) == st_geometry(st_union(scC)) # check for same locations
 
 scD = scenario_B[0,]
 for(iPoly in 1:nrow(scenario_D)){
@@ -247,6 +253,8 @@ for(iPoly in 1:nrow(scenario_D)){
     scD = rbind(scD, sub)
   }} # end
 st_write(obj=scD, paste0(pathdir, "/data_products/Shapefile_scD.shp"))
+sum(st_area(scenario_D)) == sum(st_area(scD)) # check for same size
+st_geometry(st_union(scenario_D)) == st_geometry(st_union(scD)) # check for same locations
 
 scE = scenario_E[0,]
 for(iPoly in 1:nrow(scenario_E)){
@@ -259,6 +267,8 @@ for(iPoly in 1:nrow(scenario_E)){
     scE = rbind(scE, sub)
   }} # end
 st_write(obj=scE, paste0(pathdir, "/data_products/Shapefile_scE.shp"))
+sum(st_area(scenario_E)) == sum(st_area(scE)) # check for same size
+st_geometry(st_union(scenario_E)) == st_geometry(st_union(scE)) # check for same locations
 
 
 CS <- subset(shape_ices_EEZ, Eco_EEZ == "Celtic Seas")
